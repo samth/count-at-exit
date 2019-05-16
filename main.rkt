@@ -2,22 +2,25 @@
 
 (#%provide count)
 
-(define-values (m) (make-hasheq))
+(define-values (counts) (make-hasheq))
+(define-values (flush?) #f)
 
 (define-values (count)
   (lambda (v)
-    (hash-set! m 'n (add1
-                     (hash-ref m 'n
-                               (lambda ()
-                                 (plumber-add-flush!
-                                  (current-plumber)
-                                  (lambda _
-                                    (log-message (current-logger)
-                                                 'info
-                                                 (format "count: ~s ~s" 'n
-                                                         (hash-ref m 'n 0))
-                                                 (current-continuation-marks))))
-                                 0))))))
+    (if flush?
+        (void)
+        (plumber-add-flush!
+         (current-plumber)
+         (lambda _
+           (hash-for-each
+            counts
+            (lambda (k v)
+              (log-message (current-logger)
+                           'info
+                           (format "count: ~s ~s" k v)
+                           (current-continuation-marks)))))))
+    (set! flush? #t)
+    (hash-set! counts v (add1 (hash-ref counts v 0)))))
                                    
 
 
